@@ -1,20 +1,86 @@
-# Reproducible Research: Peer Assessment 1
+**Answer for Peer Assessment 1**
+========================================================
 
+**Step1: Loading and preprocessing the data**
 
-## Loading and preprocessing the data
+```{r,echo = TRUE}
+library(plyr)
+Sys.setlocale("LC_TIME", "English") 
+data<-read.csv("activity.csv",header=T,na.strings="NA",sep=",")
+data$date<-as.Date(as.character(data$date),format="%Y-%m-%d")
+```
 
+**Step2: What is mean total number of steps taken per day?**
 
+```{r,echo = TRUE,fig.width=10, fig.height=5}
+daydata<-count(data$date)
+for(i in 1:nrow(daydata)){
+  sub<-subset(data,data$date==daydata$x[i])
+  daydata$steps[i]<-sum(sub$steps,na.rm=F)
+}
+hist(daydata$steps,col="red",breaks=10,main=" Total number of steps taken each day",xlab="total number of steps taken each day",ylab="Number of steps")
 
-## What is mean total number of steps taken per day?
+print(paste("the mean total number of steps taken per day is",mean(daydata$steps,na.rm=T),sep=" "))
+print(paste("the median total number of steps taken per day is",median(daydata$steps,na.rm=T),sep=" "))
+```
 
+**Step3: What is the average daily activity pattern?**
 
+```{r,echo = TRUE,fig.width=10, fig.height=5}
+intervaldata<-count(data$interval)
+for(i in 1:nrow(intervaldata)){
+  sub<-subset(data,data$interval==intervaldata$x[i])
+  intervaldata$steps[i]<-sum(sub$steps,na.rm=T)/61
+}
+plot(intervaldata$x,intervaldata$steps,type="l",main="Average daily activity pattern",ylab="Average number of steps taken (averaged across all days)",xlab="Interval")
 
-## What is the average daily activity pattern?
+max<-max(intervaldata$steps,na.rm=F)
+print(paste("The 5-minute interval which contains the maximum number of steps on average across all the days in the dataset is",intervaldata$x[which(intervaldata$steps==max)],sep=" "))
+```
 
+**Step4: Imputing missing values**
 
+The strategy for imputing missing data is to use the the mean for that 5-minute interval.
 
-## Imputing missing values
+```{r,echo = TRUE,fig.width=10, fig.height=5}
+nasub<-subset(data,is.na(data$steps))
+print(paste("the total number of missing values in the dataset is",nrow(nasub),sep=" "))
+newdata<-data
+for(i in 1:nrow(newdata)){
+  if(is.na(newdata$steps[i])){
+    newdata$steps[i]<-intervaldata$steps[which(intervaldata$x==newdata$interval[i])]
+  }
+}
+newdaydata<-count(newdata$date)
+for(i in 1:nrow(newdaydata)){
+  sub<-subset(newdata,newdata$date==newdaydata$x[i])
+  newdaydata$steps[i]<-sum(sub$steps)
+}
+hist(newdaydata$steps,col="red",breaks=10,main=" Total number of steps taken each day(missing values imputed)",xlab="total number of steps taken each day",ylab="Number of steps")
 
+print(paste("the mean total number of steps taken per day is",mean(newdaydata$steps),sep=" "))
+print(paste("the median total number of steps taken per day is",median(newdaydata$steps),sep=" "))
+```
 
+These values differ from the estimates from the first part of the assignment, the mean and median numbers of steps taken per day in this are less than the mean and median in step2.
 
-## Are there differences in activity patterns between weekdays and weekends?
+**Step5: Are there differences in activity patterns between weekdays and weekends?**
+
+```{r,echo = TRUE,fig.width=10, fig.height=10}
+for(i in 1:nrow(newdata)){
+  newdata$weekday[i]<-weekdays(newdata$date[i])
+}
+newdataweekday<-subset(newdata,(newdata$weekday=="Monday"|newdata$weekday=="Tuesday"|newdata$weekday=="Wednesday"|newdata$weekday=="Thursday"|newdata$weekday=="Friday"))
+newdataweekend<-subset(newdata,(newdata$weekday=="Saturday"|newdata$weekday=="Sunday"))
+intervaldataweekday<-count(newdata$interval)
+intervaldataweekend<-count(newdata$interval)
+for(i in 1:nrow(intervaldataweekday)){
+  sub1<-subset(newdataweekday,newdataweekday$interval==intervaldataweekday$x[i])
+  sub2<-subset(newdataweekend,newdataweekend$interval==intervaldataweekend$x[i])
+  intervaldataweekday$steps[i]<-sum(sub1$steps,na.rm=T)/nrow(sub1)
+  intervaldataweekend$steps[i]<-sum(sub2$steps,na.rm=T)/nrow(sub2)
+}
+par(mfcol=c(2,1))
+plot(intervaldataweekend$x,intervaldataweekend$steps,type="l",main="weekend",ylab="Average number of steps taken",xlab="Interval")
+plot(intervaldataweekday$x,intervaldataweekday$steps,type="l",main="weekday",ylab="Average number of steps taken",xlab="Interval")
+```
